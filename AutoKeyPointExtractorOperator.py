@@ -8,8 +8,9 @@ import dlib
 import numpy
 from imutils import face_utils
 
-# pre-treined model
+# pre-trained model
 LANDMARK_PATH = "/Users/cansik/git/zhdk/auto-keypoint-retopology/shape_predictor_68_face_landmarks.dat"
+RENDER_DIR = "/Users/cansik/git/zhdk/auto-keypoint-retopology/"
 
 class AutoKeyPointExtractorOperator(bpy.types.Operator):
     """Operator which runs its self from a timer"""
@@ -31,7 +32,8 @@ class AutoKeyPointExtractorOperator(bpy.types.Operator):
         bpy.context.scene.render.filepath = filename
         bpy.ops.render.render(use_viewport=True, write_still=True)
 
-    def extract_keypoints(self, image):
+    def extract_keypoints(self, filename):
+        image = cv2.imread(filename, cv2.IMREAD_COLOR)
         gray = cv2.cvtColor(image, cv2.COLOR_BGR2GRAY)
         rects = self.detector(gray, 0)
 
@@ -52,6 +54,7 @@ class AutoKeyPointExtractorOperator(bpy.types.Operator):
             for (x, y) in shape:
                 cv2.circle(image, (x, y), 2, (0, 255, 255), -1)
 
+        cv2.imwrite(RENDER_DIR + "/result.png", image)
         cv2.imshow("Output", image)
         cv2.waitKey(1)
         return shape
@@ -60,12 +63,21 @@ class AutoKeyPointExtractorOperator(bpy.types.Operator):
         return None
 
     def execute(self, context):
+        # get object to be annotated
         if len(bpy.context.selected_objects) == 0:
             print("no object selected!")
-            return
+            return {'FINISHED'}
 
         obj = bpy.context.selected_objects[0]
-        print(obj)
+
+        # create render
+        imagePath = RENDER_DIR + "/render.png"
+        self.render_to_file(imagePath)
+
+        # extract keypoints
+        self.extract_keypoints(imagePath)
+
+        return {'FINISHED'}
 
     def cancel(self, context):
         wm = context.window_manager
