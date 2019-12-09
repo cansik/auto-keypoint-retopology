@@ -22,11 +22,15 @@ python3 -m pip install cmake
 python3 -m pip install opencv-python opencv-contrib-python imutils numpy dlib --user
 ```
 
-#### MacOS
+### MacOS
 
 ```bash
-brew install dlib
-pip3 install opencv-python opencv-contrib-python imutils numpy dlib --user
+./python3.7m -m ensurepip
+./python3.7m -m pip install --upgrade pip --user
+./python3.7m -m pip install opencv-python opencv-contrib-python imutils numpy dlib --user
+
+# dlib from source if needed
+python3.7m setup.py install
 ```
 
 #### Landmark Model

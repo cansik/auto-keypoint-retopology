@@ -1,26 +1,37 @@
+# ugly fix if openvino is
+import os
+os.sys.path = list(filter(lambda x: "openvino" not in x, os.sys.path))
+
 import bpy
-from bpy.props import FloatProperty
-
-from imutils import face_utils
-import dlib
 import cv2
-import time
+import dlib
 import numpy
+from imutils import face_utils
 
+# pre-treined model
+LANDMARK_PATH = "/Users/cansik/git/zhdk/auto-keypoint-retopology/shape_predictor_68_face_landmarks.dat"
 
 class AutoKeyPointExtractorOperator(bpy.types.Operator):
     """Operator which runs its self from a timer"""
     bl_idname = "wm.auto_key_point_extractor_operator"
     bl_label = "Auto KeyPoint Extractor Operator"
 
-    # our pre-treined model directory
-    p = "shape_predictor_68_face_landmarks.dat"
+    print(os.path.dirname(os.path.abspath(__file__)))
     detector = dlib.get_frontal_face_detector()
-    predictor = dlib.shape_predictor(p)
+    predictor = dlib.shape_predictor(LANDMARK_PATH)
 
     stop: bpy.props.BoolProperty()
 
-    def extract(self, image):
+    def render_to_file(self, filename):
+        for area in bpy.context.screen.areas:
+            if area.type == 'VIEW_3D':
+                area.spaces[0].shading.type = 'RENDERED'
+
+        bpy.context.scene.render.image_settings.file_format = 'PNG'
+        bpy.context.scene.render.filepath = filename
+        bpy.ops.render.render(use_viewport=True, write_still=True)
+
+    def extract_keypoints(self, image):
         gray = cv2.cvtColor(image, cv2.COLOR_BGR2GRAY)
         rects = self.detector(gray, 0)
 
@@ -45,12 +56,16 @@ class AutoKeyPointExtractorOperator(bpy.types.Operator):
         cv2.waitKey(1)
         return shape
 
+    def project_to_vertices(self, keypoints):
+        return None
+
     def execute(self, context):
         if len(bpy.context.selected_objects) == 0:
             print("no object selected!")
             return
 
         obj = bpy.context.selected_objects[0]
+        print(obj)
 
     def cancel(self, context):
         wm = context.window_manager
@@ -70,4 +85,4 @@ if __name__ == "__main__":
     register()
 
     # test call
-    # bpy.ops.wm.opencv_operator()
+    bpy.ops.wm.auto_key_point_extractor_operator()
