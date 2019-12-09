@@ -1,6 +1,15 @@
 # Auto Keypoint Extractor for Retopology
 The idea of this tool is to extract the facial keypoints of a texture, mark the vertices and export the information for retopology tools like [R3DS Wrap](https://www.russian3dscanner.com/).
 
+### Process
+
+1. change camera to frontal view of face
+2. render camera image
+3. detect facial landmarks
+4. project landmarks to vertices
+5. read uv coordinates of vertices
+6. export all together
+
 ### Installation
 
 #### Windows
