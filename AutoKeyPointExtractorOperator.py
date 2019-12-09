@@ -1,16 +1,29 @@
 # ugly fix if openvino is
 import os
+
+from mathutils import Vector
+
 os.sys.path = list(filter(lambda x: "openvino" not in x, os.sys.path))
 
 import bpy
+import bpy_extras
+
 import cv2
 import dlib
 import numpy
 from imutils import face_utils
 
-# pre-trained model
+# settings
 LANDMARK_PATH = "/Users/cansik/git/zhdk/auto-keypoint-retopology/shape_predictor_68_face_landmarks.dat"
 RENDER_DIR = "/Users/cansik/git/zhdk/auto-keypoint-retopology/"
+
+
+# mapping
+
+
+def get_vertex(scene, obj, keypoint):
+    co_2d = bpy_extras.object_utils.world_to_camera_view(scene, obj, keypoint)
+
 
 class AutoKeyPointExtractorOperator(bpy.types.Operator):
     """Operator which runs its self from a timer"""
@@ -35,32 +48,24 @@ class AutoKeyPointExtractorOperator(bpy.types.Operator):
     def extract_keypoints(self, filename):
         image = cv2.imread(filename, cv2.IMREAD_COLOR)
         gray = cv2.cvtColor(image, cv2.COLOR_BGR2GRAY)
-        rects = self.detector(gray, 0)
 
-        # find land marks for faces
-        for (i, rect) in enumerate(rects):
-            shape = self.predictor(gray, rect)
-            shape = face_utils.shape_to_np(shape)
+        # find land marks for first face
+        rect = self.detector(gray, 0)[0]
+        shape = self.predictor(gray, rect)
+        shape = face_utils.shape_to_np(shape)
 
-            # 2D image points
-            image_points = numpy.array([shape[30],  # Nose tip - 31
-                                        shape[8],  # Chin - 9
-                                        shape[36],  # Left eye left corner - 37
-                                        shape[45],  # Right eye right corner - 46
-                                        shape[48],  # Left Mouth corner - 49
-                                        shape[54]  # Right mouth corner - 55
-                                        ], dtype=numpy.float32)
-
-            for (x, y) in shape:
-                cv2.circle(image, (x, y), 2, (0, 255, 255), -1)
+        # annotate keypoints in image
+        for (x, y) in shape:
+            cv2.circle(image, (x, y), 2, (0, 255, 255), -1)
 
         cv2.imwrite(RENDER_DIR + "/result.png", image)
         cv2.imshow("Output", image)
         cv2.waitKey(1)
-        return shape
+        return shape.tolist()
 
-    def project_to_vertices(self, keypoints):
-        return None
+    def project_to_vertices(self, obj, keypoints):
+        scene = bpy.context.scene
+        return list(map(lambda kp: get_vertex(scene, obj, kp), keypoints))
 
     def execute(self, context):
         # get object to be annotated
@@ -71,17 +76,21 @@ class AutoKeyPointExtractorOperator(bpy.types.Operator):
         obj = bpy.context.selected_objects[0]
 
         # create render
-        imagePath = RENDER_DIR + "/render.png"
-        self.render_to_file(imagePath)
+        image_path = RENDER_DIR + "/render.png"
+        self.render_to_file(image_path)
 
         # extract keypoints
-        self.extract_keypoints(imagePath)
+        keypoints = self.extract_keypoints(image_path)
+        positions = list(map(lambda k: Vector((k[0], k[1])), keypoints))
+        print("Positions: %s" % positions)
+
+        # map keypoints to vertices
+        vertices = self.project_to_vertices(obj, positions)
+        print(vertices)
 
         return {'FINISHED'}
 
     def cancel(self, context):
-        wm = context.window_manager
-        wm.event_timer_remove(self._timer)
         cv2.destroyAllWindows()
 
 
