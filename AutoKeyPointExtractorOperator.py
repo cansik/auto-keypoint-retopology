@@ -6,7 +6,7 @@ from mathutils import Vector
 os.sys.path = list(filter(lambda x: "openvino" not in x, os.sys.path))
 
 import bpy
-import bpy_extras
+from bpy_extras.object_utils import world_to_camera_view
 
 import cv2
 import dlib
@@ -21,8 +21,8 @@ RENDER_DIR = "/Users/cansik/git/zhdk/auto-keypoint-retopology/"
 # mapping
 
 
-def get_vertex(scene, obj, keypoint):
-    co_2d = bpy_extras.object_utils.world_to_camera_view(scene, obj, keypoint)
+def get_vertex(scene, cam, keypoint):
+    co_2d = world_to_camera_view(scene, cam, keypoint)
 
 
 class AutoKeyPointExtractorOperator(bpy.types.Operator):
@@ -63,9 +63,9 @@ class AutoKeyPointExtractorOperator(bpy.types.Operator):
         cv2.waitKey(1)
         return shape.tolist()
 
-    def project_to_vertices(self, obj, keypoints):
+    def project_to_vertices(self, cam, keypoints):
         scene = bpy.context.scene
-        return list(map(lambda kp: get_vertex(scene, obj, kp), keypoints))
+        return list(map(lambda kp: get_vertex(scene, cam, kp), keypoints))
 
     def execute(self, context):
         # get object to be annotated
@@ -74,6 +74,7 @@ class AutoKeyPointExtractorOperator(bpy.types.Operator):
             return {'FINISHED'}
 
         obj = bpy.context.selected_objects[0]
+        cam = bpy.data.objects['Camera']
 
         # create render
         image_path = RENDER_DIR + "/render.png"
@@ -81,12 +82,12 @@ class AutoKeyPointExtractorOperator(bpy.types.Operator):
 
         # extract keypoints
         keypoints = self.extract_keypoints(image_path)
-        positions = list(map(lambda k: Vector((k[0], k[1])), keypoints))
+        positions = list(map(lambda k: Vector((k[0], k[1], 0.0)), keypoints))
         print("Positions: %s" % positions)
 
         # map keypoints to vertices
-        vertices = self.project_to_vertices(obj, positions)
-        print(vertices)
+        vertices = self.project_to_vertices(cam, positions)
+        print("Vertices: %s" % vertices)
 
         return {'FINISHED'}
 
