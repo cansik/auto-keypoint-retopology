@@ -8,10 +8,10 @@ import time
 import numpy
 
 
-class AutoKeyRetopoOperator(bpy.types.Operator):
+class AutoKeyPointExtractorOperator(bpy.types.Operator):
     """Operator which runs its self from a timer"""
-    bl_idname = "wm.opencv_operator"
-    bl_label = "Auto Key Retopology Operator"
+    bl_idname = "wm.auto_key_point_extractor_operator"
+    bl_label = "Auto KeyPoint Extractor Operator"
 
     # our pre-treined model directory
     p = "shape_predictor_68_face_landmarks.dat"
@@ -59,11 +59,11 @@ class AutoKeyRetopoOperator(bpy.types.Operator):
 
 
 def register():
-    bpy.utils.register_class(AutoKeyRetopoOperator)
+    bpy.utils.register_class(AutoKeyPointExtractorOperator)
 
 
 def unregister():
-    bpy.utils.unregister_class(AutoKeyRetopoOperator)
+    bpy.utils.unregister_class(AutoKeyPointExtractorOperator)
 
 
 if __name__ == "__main__":
