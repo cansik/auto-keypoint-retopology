@@ -5,10 +5,13 @@ The idea of this tool is to extract the facial keypoints of a texture, mark the 
 
 1. change camera to frontal view of face
 2. render camera image
-3. detect facial landmarks
-4. project landmarks to vertices
-5. read uv coordinates of vertices
-6. export all together
+3. detect facial landmark keypoints
+4. project vertices to camera space
+5. find vertices that match detected keypoints
+5. read uv coordinates of selected vertices
+6. export index and uv coordinates
+
+![Result](result.png)
 
 ### Installation
 
