@@ -124,11 +124,20 @@ class AutoKeyPointExtractorOperator(bpy.types.Operator):
         tree = spatial.KDTree(scaled_screen_coordinates_list)
 
         # match screen coordinates to keypoint positions
-        vertex_results = [tree.query(kp) for kp in keypoints]
-        mean_accuracy = np.mean(vertex_results, axis=0)
+        vertex_indexes = [tree.query(kp) for kp in keypoints]
+        mean_accuracy = np.mean(vertex_indexes, axis=0)
+        
+        # extract real vertices
+        vertices = [obj.data.vertices[int(vi[0])].co for vi in vertex_indexes]
+        world_vertices = (obj.matrix_world @ vert for vert in vertices)
+
+        # add cubes for each vertex
+        for i, v in enumerate(world_vertices):
+            bpy.ops.mesh.primitive_cube_add(location=(v.x, v.y, v.z))
+            bpy.ops.transform.resize(value=(0.1, 0.1, 0.1))
 
         print("-----")
-        print("Points Extracted: %s pts" % len(vertex_results))
+        print("Points Extracted: %s pts" % len(vertex_indexes))
         print("Mean Accuracy: %s px" % round(mean_accuracy[0], 4))
         print("-----")
 
