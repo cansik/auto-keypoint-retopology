@@ -127,9 +127,10 @@ class AutoKeyPointExtractorOperator(bpy.types.Operator):
         vertex_results = [tree.query(kp) for kp in keypoints]
         mean_accuracy = np.mean(vertex_results, axis=0)
 
-        print("")
-        print("Points Extracted: %s" % len(vertex_results))
-        print("Mean Accuracy: %s" % round(mean_accuracy[0], 4))
+        print("-----")
+        print("Points Extracted: %s pts" % len(vertex_results))
+        print("Mean Accuracy: %s px" % round(mean_accuracy[0], 4))
+        print("-----")
 
         return {'FINISHED'}
 
