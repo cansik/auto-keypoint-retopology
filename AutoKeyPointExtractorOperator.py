@@ -12,6 +12,7 @@ from bpy_extras.object_utils import world_to_camera_view
 
 import cv2
 import dlib
+import numpy as np
 from imutils import face_utils
 from scipy import spatial
 
@@ -117,19 +118,18 @@ class AutoKeyPointExtractorOperator(bpy.types.Operator):
         screen_coordinate_list = [list(v[:2]) for v in screen_coordinates]
         scaled_screen_coordinates_list = self.scale_to_pixel(scene, screen_coordinate_list)
 
-        print("SCL: %s" % list(screen_coordinate_list[:5]))
-        print("SSCL: %s" % list(scaled_screen_coordinates_list[:5]))
+        # print("SCL: %s" % list(screen_coordinate_list[:5]))
+        # print("SSCL: %s" % list(scaled_screen_coordinates_list[:5]))
 
         tree = spatial.KDTree(scaled_screen_coordinates_list)
 
         # match screen coordinates to keypoint positions
-        vertex_ids = [tree.query(kp) for kp in keypoints]
+        vertex_results = [tree.query(kp) for kp in keypoints]
+        mean_accuracy = np.mean(vertex_results, axis=0)
 
         print("")
-        print("FoundIds: %s" % vertex_ids)
-
-        print("")
-        print("Final Vertices: %s" % vertex_ids)
+        print("Points Extracted: %s" % len(vertex_results))
+        print("Mean Accuracy: %s" % round(mean_accuracy[0], 4))
 
         return {'FINISHED'}
 
