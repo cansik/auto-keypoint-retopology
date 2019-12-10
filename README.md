@@ -3,8 +3,7 @@ The idea of this tool is to extract the facial keypoints of a texture, mark the 
 
 ### Process
 
-1. change camera to frontal view of face
-2. render camera image
+1. render camera image
 3. detect facial landmark keypoints
 4. project vertices to camera space
 5. find vertices that match detected keypoints

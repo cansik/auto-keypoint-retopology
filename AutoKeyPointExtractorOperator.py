@@ -55,8 +55,11 @@ class AutoKeyPointExtractorOperator(bpy.types.Operator):
         shape = face_utils.shape_to_np(shape)
 
         # annotate keypoints in image
+        i = 0
         for (x, y) in shape:
+            cv2.putText(image, "%s" % i, (x, y), cv2.FONT_HERSHEY_SIMPLEX, 0.25, (0, 255, 255), lineType=cv2.LINE_AA)
             cv2.circle(image, (x, y), 2, (0, 255, 255), -1)
+            i += 1
 
         cv2.imwrite(RENDER_DIR + "/result.png", image)
         cv2.imshow("Output", image)
@@ -67,12 +70,21 @@ class AutoKeyPointExtractorOperator(bpy.types.Operator):
         scene = bpy.context.scene
         return list(map(lambda kp: get_vertex(scene, cam, kp), keypoints))
 
+    def get_screen_coordinates(self, scene, cam, obj):
+        vertices = (vert.co for vert in obj.data.vertices)
+        return [world_to_camera_view(scene, cam, coord) for coord in vertices]
+
+    def match_keypoints_to_coordinates(self):
+        return None
+
     def execute(self, context):
         # get object to be annotated
         if len(bpy.context.selected_objects) == 0:
             print("no object selected!")
             return {'FINISHED'}
 
+        # read objects
+        scene = bpy.context.scene
         obj = bpy.context.selected_objects[0]
         cam = bpy.data.objects['Camera']
 
@@ -86,8 +98,13 @@ class AutoKeyPointExtractorOperator(bpy.types.Operator):
         print("Positions: %s" % positions)
 
         # map keypoints to vertices
-        vertices = self.project_to_vertices(cam, positions)
-        print("Vertices: %s" % vertices)
+        # vertices = self.project_to_vertices(cam, positions)
+        # print("Vertices: %s" % vertices)
+
+        # extract vertices
+        screen_coordinates = self.get_screen_coordinates(scene, cam, obj)
+
+        # match vertices to keypoint positions
 
         return {'FINISHED'}
 
