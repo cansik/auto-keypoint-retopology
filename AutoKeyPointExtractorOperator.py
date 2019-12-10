@@ -13,6 +13,7 @@ from bpy_extras.object_utils import world_to_camera_view
 import cv2
 import dlib
 from imutils import face_utils
+from scipy import spatial
 
 # settings
 LANDMARK_PATH = "/Users/cansik/git/zhdk/auto-keypoint-retopology/shape_predictor_68_face_landmarks.dat"
@@ -97,16 +98,18 @@ class AutoKeyPointExtractorOperator(bpy.types.Operator):
 
         # extract keypoints
         keypoints = self.extract_keypoints(image_path)
-        positions = list(map(lambda k: Vector((k[0], k[1], 0.0)), keypoints))
 
         # extract vertices
         screen_coordinates = self.get_screen_coordinates(scene, cam, obj)
+        # create list but only take x and y as list (kp are 2d)
+        screen_coordinate_list = [list(v[:2]) for v in screen_coordinates]
+        tree = spatial.KDTree(screen_coordinate_list)
 
-        # match screen coordinates to keypoint positions (multi-threaded)
-        pool = Pool(os.cpu_count())
-        vertices = pool.map(partial(get_closest_vertex, screen_coordinates=screen_coordinates), keypoints)
+        # match screen coordinates to keypoint positions
+        vertex_ids = [tree.query(kp)[1] for kp in keypoints]
 
-        print("Final Vertices: %s" % vertices)
+        print("")
+        print("Final Vertices: %s" % vertex_ids)
 
         return {'FINISHED'}
 

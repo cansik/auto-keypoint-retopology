@@ -3,12 +3,12 @@ The idea of this tool is to extract the facial keypoints of a texture, mark the 
 
 ### Process
 
-1. render camera image
-3. detect facial landmark keypoints
-4. project vertices to camera space
-5. find vertices that match detected keypoints
-5. read uv coordinates of selected vertices
-6. export index and uv coordinates
+1. Render camera image
+3. Detect facial landmark keypoints
+4. Project vertices to camera space
+5. Find vertices that match detected keypoints
+5. Read uv coordinates of selected vertices by using a KDTree
+6. Export index and uv coordinates
 
 ![Result](result.png)
 
@@ -21,7 +21,7 @@ Install [Visual Studio Build Tools](https://visualstudio.microsoft.com/thank-you
 python3 -m ensurepip
 python3 -m pip install --upgrade pip --user
 python3 -m pip install cmake
-python3 -m pip install opencv-python opencv-contrib-python imutils numpy dlib --user
+python3 -m pip install opencv-python opencv-contrib-python imutils numpy scipy dlib --user
 ```
 
 ### MacOS
@@ -29,7 +29,7 @@ python3 -m pip install opencv-python opencv-contrib-python imutils numpy dlib --
 ```bash
 ./python3.7m -m ensurepip
 ./python3.7m -m pip install --upgrade pip --user
-./python3.7m -m pip install opencv-python opencv-contrib-python imutils numpy dlib --user
+./python3.7m -m pip install opencv-python opencv-contrib-python imutils numpy scipy dlib --user
 
 # dlib from source if needed
 python3.7m setup.py install
