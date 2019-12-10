@@ -128,7 +128,7 @@ class AutoKeyPointExtractorOperator(bpy.types.Operator):
         mean_accuracy = np.mean(vertex_indexes, axis=0)
         
         # extract real vertices
-        vertices = [obj.data.vertices[int(vi[0])].co for vi in vertex_indexes]
+        vertices = [obj.data.vertices[int(vi[1])].co for vi in vertex_indexes]
         world_vertices = list(obj.matrix_world @ vert for vert in vertices)
 
         # add cubes for each vertex
