@@ -1,5 +1,7 @@
 # ugly fix if openvino is
 import os
+from functools import partial
+from multiprocessing.pool import Pool
 
 from mathutils import Vector
 
@@ -10,7 +12,6 @@ from bpy_extras.object_utils import world_to_camera_view
 
 import cv2
 import dlib
-import numpy
 from imutils import face_utils
 
 # settings
@@ -23,6 +24,10 @@ RENDER_DIR = "/Users/cansik/git/zhdk/auto-keypoint-retopology/"
 
 def get_vertex(scene, cam, keypoint):
     co_2d = world_to_camera_view(scene, cam, keypoint)
+
+
+def get_closest_vertex(keypoint, screen_coordinates):
+    return screen_coordinates[0]
 
 
 class AutoKeyPointExtractorOperator(bpy.types.Operator):
@@ -57,7 +62,8 @@ class AutoKeyPointExtractorOperator(bpy.types.Operator):
         # annotate keypoints in image
         i = 0
         for (x, y) in shape:
-            cv2.putText(image, "%s" % i, (x, y), cv2.FONT_HERSHEY_SIMPLEX, 0.25, (0, 255, 255), lineType=cv2.LINE_AA)
+            cv2.putText(image, "%s" % i, (x + 2, y + 2), cv2.FONT_HERSHEY_SIMPLEX, 0.3, (0, 255, 255),
+                        lineType=cv2.LINE_AA)
             cv2.circle(image, (x, y), 2, (0, 255, 255), -1)
             i += 1
 
@@ -73,9 +79,6 @@ class AutoKeyPointExtractorOperator(bpy.types.Operator):
     def get_screen_coordinates(self, scene, cam, obj):
         vertices = (vert.co for vert in obj.data.vertices)
         return [world_to_camera_view(scene, cam, coord) for coord in vertices]
-
-    def match_keypoints_to_coordinates(self):
-        return None
 
     def execute(self, context):
         # get object to be annotated
@@ -95,16 +98,15 @@ class AutoKeyPointExtractorOperator(bpy.types.Operator):
         # extract keypoints
         keypoints = self.extract_keypoints(image_path)
         positions = list(map(lambda k: Vector((k[0], k[1], 0.0)), keypoints))
-        print("Positions: %s" % positions)
-
-        # map keypoints to vertices
-        # vertices = self.project_to_vertices(cam, positions)
-        # print("Vertices: %s" % vertices)
 
         # extract vertices
         screen_coordinates = self.get_screen_coordinates(scene, cam, obj)
 
-        # match vertices to keypoint positions
+        # match screen coordinates to keypoint positions (multi-threaded)
+        pool = Pool(os.cpu_count())
+        vertices = pool.map(partial(get_closest_vertex, screen_coordinates=screen_coordinates), keypoints)
+
+        print("Final Vertices: %s" % vertices)
 
         return {'FINISHED'}
 
