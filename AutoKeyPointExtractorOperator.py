@@ -129,12 +129,13 @@ class AutoKeyPointExtractorOperator(bpy.types.Operator):
         
         # extract real vertices
         vertices = [obj.data.vertices[int(vi[0])].co for vi in vertex_indexes]
-        world_vertices = (obj.matrix_world @ vert for vert in vertices)
+        world_vertices = list(obj.matrix_world @ vert for vert in vertices)
 
         # add cubes for each vertex
-        for i, v in enumerate(world_vertices):
-            bpy.ops.mesh.primitive_cube_add(location=(v.x, v.y, v.z))
-            bpy.ops.transform.resize(value=(0.1, 0.1, 0.1))
+        for i, v in enumerate(world_vertices[:1]):
+            bpy.context.scene.cursor.location = (v.x, v.y, v.z)
+            #bpy.ops.mesh.primitive_cube_add(location=(v.x, v.y, v.z), size=2)
+            #bpy.ops.transform.resize(value=(0.1, 0.1, 0.1))
 
         print("-----")
         print("Points Extracted: %s pts" % len(vertex_indexes))
