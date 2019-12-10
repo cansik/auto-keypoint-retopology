@@ -69,8 +69,8 @@ class AutoKeyPointExtractorOperator(bpy.types.Operator):
             i += 1
 
         cv2.imwrite(RENDER_DIR + "/result.png", image)
-        cv2.imshow("Output", image)
-        cv2.waitKey(1)
+        #cv2.imshow("Output", image)
+        #cv2.waitKey(1)
         return shape.tolist()
 
     def project_to_vertices(self, cam, keypoints):
@@ -78,8 +78,19 @@ class AutoKeyPointExtractorOperator(bpy.types.Operator):
         return list(map(lambda kp: get_vertex(scene, cam, kp), keypoints))
 
     def get_screen_coordinates(self, scene, cam, obj):
-        vertices = (vert.co for vert in obj.data.vertices)
+        mat = obj.matrix_world
+
+        # Multiply matrix by vertex
+        vertices = (mat @ vert.co for vert in obj.data.vertices)
         return [world_to_camera_view(scene, cam, coord) for coord in vertices]
+
+    def scale_to_pixel(self, scene, screen_coordinates):
+        render_scale = scene.render.resolution_percentage / 100
+        render_size = (
+            int(scene.render.resolution_x * render_scale),
+            int(scene.render.resolution_y * render_scale),
+        )
+        return [list((round(v[0] * render_size[0]), round(v[1] * render_size[1]))) for v in screen_coordinates]
 
     def execute(self, context):
         # get object to be annotated
@@ -101,12 +112,21 @@ class AutoKeyPointExtractorOperator(bpy.types.Operator):
 
         # extract vertices
         screen_coordinates = self.get_screen_coordinates(scene, cam, obj)
+
         # create list but only take x and y as list (kp are 2d)
         screen_coordinate_list = [list(v[:2]) for v in screen_coordinates]
-        tree = spatial.KDTree(screen_coordinate_list)
+        scaled_screen_coordinates_list = self.scale_to_pixel(scene, screen_coordinate_list)
+
+        print("SCL: %s" % list(screen_coordinate_list[:5]))
+        print("SSCL: %s" % list(scaled_screen_coordinates_list[:5]))
+
+        tree = spatial.KDTree(scaled_screen_coordinates_list)
 
         # match screen coordinates to keypoint positions
-        vertex_ids = [tree.query(kp)[1] for kp in keypoints]
+        vertex_ids = [tree.query(kp) for kp in keypoints]
+
+        print("")
+        print("FoundIds: %s" % vertex_ids)
 
         print("")
         print("Final Vertices: %s" % vertex_ids)
