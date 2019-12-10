@@ -133,7 +133,8 @@ class AutoKeyPointExtractorOperator(bpy.types.Operator):
         world_vertices = list(obj.matrix_world @ vert for vert in vertices)
 
         # add cubes for each vertex
-        for i, v in enumerate(world_vertices[:30]):
+        # todo: it seems the vertices are swapped (y-axis) => maybe because of screen space
+        for i, v in enumerate(world_vertices[:4]):
             bpy.context.scene.cursor.location = (v.x, v.y, v.z)
             #bpy.ops.mesh.primitive_cube_add(location=(v.x, v.y, v.z), size=2)
             #bpy.ops.transform.resize(value=(0.1, 0.1, 0.1))
