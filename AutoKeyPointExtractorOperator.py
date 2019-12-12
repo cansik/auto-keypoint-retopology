@@ -1,9 +1,5 @@
 # ugly fix if openvino is
 import os
-from functools import partial
-from multiprocessing.pool import Pool
-
-from mathutils import Vector
 
 os.sys.path = list(filter(lambda x: "openvino" not in x, os.sys.path))
 
@@ -23,14 +19,7 @@ RENDER_DIR = "/Users/cansik/git/zhdk/auto-keypoint-retopology/"
 
 
 # mapping
-
-
-def get_vertex(scene, cam, keypoint):
-    co_2d = world_to_camera_view(scene, cam, keypoint)
-
-
-def get_closest_vertex(keypoint, screen_coordinates):
-    return screen_coordinates[0]
+# todo: add mapping of keypoints
 
 
 class AutoKeyPointExtractorOperator(bpy.types.Operator):
@@ -75,10 +64,6 @@ class AutoKeyPointExtractorOperator(bpy.types.Operator):
             cv2.imshow("Output", image)
             cv2.waitKey(1)
         return shape.tolist()
-
-    def project_to_vertices(self, cam, keypoints):
-        scene = bpy.context.scene
-        return list(map(lambda kp: get_vertex(scene, cam, kp), keypoints))
 
     def get_screen_coordinates(self, scene, cam, obj):
         mat = obj.matrix_world
