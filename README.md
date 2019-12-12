@@ -10,7 +10,7 @@ The idea of this tool is to extract the facial keypoints of a texture, mark the 
 5. Read uv coordinates of selected vertices by using a KDTree
 6. Export index and uv coordinates
 
-![Result](result.png)
+![Result](screenshots/result.png)
 
 ### Installation
 
