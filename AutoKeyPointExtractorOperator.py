@@ -70,8 +70,8 @@ class AutoKeyPointExtractorOperator(bpy.types.Operator):
             i += 1
 
         cv2.imwrite(RENDER_DIR + "/result.png", image)
-        #cv2.imshow("Output", image)
-        #cv2.waitKey(1)
+        # cv2.imshow("Output", image)
+        # cv2.waitKey(1)
         return shape.tolist()
 
     def project_to_vertices(self, cam, keypoints):
@@ -91,7 +91,10 @@ class AutoKeyPointExtractorOperator(bpy.types.Operator):
             int(scene.render.resolution_x * render_scale),
             int(scene.render.resolution_y * render_scale),
         )
-        return [list((round(v[0] * render_size[0]), round(v[1] * render_size[1]))) for v in screen_coordinates]
+        # i = render_size[1] - v and j = u
+        # flipping y coordinate
+        return [list((round(v[0] * render_size[0]), render_size[1] - round(v[1] * render_size[1])))
+                for v in screen_coordinates]
 
     def execute(self, context):
         # get object to be annotated
@@ -120,24 +123,24 @@ class AutoKeyPointExtractorOperator(bpy.types.Operator):
 
         # print("SCL: %s" % list(screen_coordinate_list[:5]))
         # print("SSCL: %s" % list(scaled_screen_coordinates_list[:5]))
-        
+
         tree = spatial.KDTree(scaled_screen_coordinates_list)
 
         # match screen coordinates to keypoint positions
         # todo: filter points which are too fare away (otherwise backpoints match better)
         vertex_indexes = [tree.query(kp) for kp in keypoints]
         mean_accuracy = np.mean(vertex_indexes, axis=0)
-        
+
         # extract real vertices
         vertices = [obj.data.vertices[vi[1]].co for vi in vertex_indexes]
         world_vertices = list(obj.matrix_world @ vert for vert in vertices)
 
         # add cubes for each vertex
         # todo: it seems the vertices are swapped (y-axis) => maybe because of screen space
-        for i, v in enumerate(world_vertices[:4]):
+        for i, v in enumerate(world_vertices[:9]):
             bpy.context.scene.cursor.location = (v.x, v.y, v.z)
-            #bpy.ops.mesh.primitive_cube_add(location=(v.x, v.y, v.z), size=2)
-            #bpy.ops.transform.resize(value=(0.1, 0.1, 0.1))
+            # bpy.ops.mesh.primitive_cube_add(location=(v.x, v.y, v.z), size=2)
+            # bpy.ops.transform.resize(value=(0.1, 0.1, 0.1))
 
         print("-----")
         print("Points Extracted: %s pts" % len(vertex_indexes))
