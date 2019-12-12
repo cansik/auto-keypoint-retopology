@@ -17,6 +17,7 @@ from imutils import face_utils
 from scipy import spatial
 
 # settings
+DEBUG_MODE = False
 LANDMARK_PATH = "/Users/cansik/git/zhdk/auto-keypoint-retopology/shape_predictor_68_face_landmarks.dat"
 RENDER_DIR = "/Users/cansik/git/zhdk/auto-keypoint-retopology/"
 
@@ -70,8 +71,9 @@ class AutoKeyPointExtractorOperator(bpy.types.Operator):
             i += 1
 
         cv2.imwrite(RENDER_DIR + "/result.png", image)
-        # cv2.imshow("Output", image)
-        # cv2.waitKey(1)
+        if DEBUG_MODE:
+            cv2.imshow("Output", image)
+            cv2.waitKey(1)
         return shape.tolist()
 
     def project_to_vertices(self, cam, keypoints):
@@ -91,8 +93,8 @@ class AutoKeyPointExtractorOperator(bpy.types.Operator):
             int(scene.render.resolution_x * render_scale),
             int(scene.render.resolution_y * render_scale),
         )
-        # i = render_size[1] - v and j = u
-        # flipping y coordinate
+
+        # mapping coordinates
         return [list((round(v[0] * render_size[0]), render_size[1] - round(v[1] * render_size[1])))
                 for v in screen_coordinates]
 
@@ -121,8 +123,9 @@ class AutoKeyPointExtractorOperator(bpy.types.Operator):
         screen_coordinate_list = [list(v[:2]) for v in screen_coordinates]
         scaled_screen_coordinates_list = self.scale_to_pixel(scene, screen_coordinate_list)
 
-        # print("SCL: %s" % list(screen_coordinate_list[:5]))
-        # print("SSCL: %s" % list(scaled_screen_coordinates_list[:5]))
+        if DEBUG_MODE:
+            print("SCL: %s" % list(screen_coordinate_list[:5]))
+            print("SSCL: %s" % list(scaled_screen_coordinates_list[:5]))
 
         tree = spatial.KDTree(scaled_screen_coordinates_list)
 
@@ -136,8 +139,7 @@ class AutoKeyPointExtractorOperator(bpy.types.Operator):
         world_vertices = list(obj.matrix_world @ vert for vert in vertices)
 
         # add cubes for each vertex
-        # todo: it seems the vertices are swapped (y-axis) => maybe because of screen space
-        for i, v in enumerate(world_vertices[:9]):
+        for i, v in enumerate(world_vertices[:34]):
             bpy.context.scene.cursor.location = (v.x, v.y, v.z)
             # bpy.ops.mesh.primitive_cube_add(location=(v.x, v.y, v.z), size=2)
             # bpy.ops.transform.resize(value=(0.1, 0.1, 0.1))
