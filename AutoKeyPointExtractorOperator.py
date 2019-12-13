@@ -18,7 +18,7 @@ from scipy import spatial
 # settings
 DEBUG_MODE = False
 LANDMARK_PATH = "/Users/cansik/git/zhdk/auto-keypoint-retopology/shape_predictor_68_face_landmarks.dat"
-RENDER_DIR = "/Users/cansik/git/zhdk/auto-keypoint-retopology/"
+RENDER_DIR = "/Users/cansik/git/zhdk/auto-keypoint-retopology/render"
 
 # mapping
 # todo: add mapping of keypoints
@@ -162,7 +162,8 @@ class AutoKeyPointExtractorOperator(bpy.types.Operator):
             cv2.circle(image, (x, y), 2, (0, 255, 255), -1)
             i += 1
 
-        cv2.imwrite(RENDER_DIR + "/result.png", image)
+        # overwrite output    
+        cv2.imwrite(filename, image)
         if DEBUG_MODE:
             cv2.imshow("Output", image)
             cv2.waitKey(1)
@@ -174,9 +175,10 @@ class AutoKeyPointExtractorOperator(bpy.types.Operator):
         obj.rotation_euler = (rotation.x,
                               rotation.y,
                               rotation.z + radians(view_angle))
+        bpy.ops.object.transform_apply(rotation=True)
 
         # create render
-        image_path = RENDER_DIR + "/render.png"
+        image_path = RENDER_DIR + "/render_%s.png" % view_angle
         self.render_to_file(image_path)
 
         # extract keypoints
@@ -202,6 +204,7 @@ class AutoKeyPointExtractorOperator(bpy.types.Operator):
         obj.rotation_euler = (rotation.x,
                               rotation.y,
                               rotation.z - radians(view_angle))
+        bpy.ops.object.transform_apply(rotation=True)
 
         return vertex_indexes
 
