@@ -1,6 +1,8 @@
 # ugly fix if openvino is
 import os
 
+from bpy_extras.view3d_utils import location_3d_to_region_2d
+
 os.sys.path = list(filter(lambda x: "openvino" not in x, os.sys.path))
 
 import bpy
@@ -24,9 +26,10 @@ import blf
 
 
 class Annotator:
-    """Class used for adding annotations"""
+    """Class used for adding 2d annotations at 3d positions"""
 
-    def __init__(self):
+    def __init__(self, font_size=14):
+        self.font_size = font_size
         self.font_id = 0
         self.font_handler = None
         self.font_handler_name = "annotator_font_handler"
@@ -56,10 +59,15 @@ class Annotator:
 
     def draw_callback_px(self, context, something):
         """Draw on the viewports"""
-        # BLF drawing routine
-        blf.position(self.font_id, 2, 80, 0)
-        blf.size(self.font_id, 50, 72)
-        blf.draw(self.font_id, "Hello World")
+        rv3d = bpy.context.space_data.region_3d
+        region = bpy.context.region
+
+        for position, text in self.annotations:
+            pos_text = location_3d_to_region_2d(region, rv3d, position)
+
+            blf.position(self.font_id, pos_text.x, pos_text.y, 0)
+            blf.size(self.font_id, self.font_size, 72)
+            blf.draw(self.font_id, text)
 
 
 class AutoKeyPointExtractorOperator(bpy.types.Operator):
@@ -168,7 +176,7 @@ class AutoKeyPointExtractorOperator(bpy.types.Operator):
         self.annotator.clear_annotations()
         for i, v in enumerate(world_vertices):
             bpy.context.scene.cursor.location = (v.x, v.y, v.z)
-            self.annotator.add_annotation((v.x, v.y, v.z), "KP-%s" % i)
+            self.annotator.add_annotation(v, "o")
         self.annotator.add_handler()
 
         print("-----")
