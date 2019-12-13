@@ -17,9 +17,49 @@ DEBUG_MODE = False
 LANDMARK_PATH = "/Users/cansik/git/zhdk/auto-keypoint-retopology/shape_predictor_68_face_landmarks.dat"
 RENDER_DIR = "/Users/cansik/git/zhdk/auto-keypoint-retopology/"
 
-
 # mapping
 # todo: add mapping of keypoints
+
+import blf
+
+
+class Annotator:
+    """Class used for adding annotations"""
+
+    def __init__(self):
+        self.font_id = 0
+        self.font_handler = None
+        self.font_handler_name = "annotator_font_handler"
+        self.annotations = []
+
+    def add_handler(self):
+        """Adds annotation handler to 3d view"""
+        font_handler = bpy.types.SpaceView3D.draw_handler_add(
+            self.draw_callback_px, (None, None), 'WINDOW', 'POST_PIXEL')
+        bpy.app.driver_namespace[self.font_handler_name] = font_handler
+
+    def remove_handler(self):
+        """Removes annoation handler from 3d view"""
+        try:
+            bpy.types.SpaceView3D.draw_handler_remove(
+                bpy.app.driver_namespace[self.font_handler_name], 'WINDOW')
+        except:
+            print("no annotation event handler found")
+
+    def add_annotation(self, position, text):
+        """Adds a new annotation"""
+        self.annotations.append((position, text))
+
+    def clear_annotations(self):
+        """Clears all annotations"""
+        self.annotations.clear()
+
+    def draw_callback_px(self, context, something):
+        """Draw on the viewports"""
+        # BLF drawing routine
+        blf.position(self.font_id, 2, 80, 0)
+        blf.size(self.font_id, 50, 72)
+        blf.draw(self.font_id, "Hello World")
 
 
 class AutoKeyPointExtractorOperator(bpy.types.Operator):
@@ -30,8 +70,7 @@ class AutoKeyPointExtractorOperator(bpy.types.Operator):
     print(os.path.dirname(os.path.abspath(__file__)))
     detector = dlib.get_frontal_face_detector()
     predictor = dlib.shape_predictor(LANDMARK_PATH)
-
-    stop: bpy.props.BoolProperty()
+    annotator = Annotator()
 
     def render_to_file(self, filename):
         for area in bpy.context.screen.areas:
@@ -84,6 +123,8 @@ class AutoKeyPointExtractorOperator(bpy.types.Operator):
                 for v in screen_coordinates]
 
     def execute(self, context):
+        self.annotator.remove_handler()
+
         # get object to be annotated
         if len(bpy.context.selected_objects) == 0:
             print("no object selected!")
@@ -123,11 +164,12 @@ class AutoKeyPointExtractorOperator(bpy.types.Operator):
         vertices = [obj.data.vertices[vi[1]].co for vi in vertex_indexes]
         world_vertices = list(obj.matrix_world @ vert for vert in vertices)
 
-        # add cubes for each vertex
-        for i, v in enumerate(world_vertices[:34]):
+        # add annotation for each vertex
+        self.annotator.clear_annotations()
+        for i, v in enumerate(world_vertices):
             bpy.context.scene.cursor.location = (v.x, v.y, v.z)
-            # bpy.ops.mesh.primitive_cube_add(location=(v.x, v.y, v.z), size=2)
-            # bpy.ops.transform.resize(value=(0.1, 0.1, 0.1))
+            self.annotator.add_annotation((v.x, v.y, v.z), "KP-%s" % i)
+        self.annotator.add_handler()
 
         print("-----")
         print("Points Extracted: %s pts" % len(vertex_indexes))
