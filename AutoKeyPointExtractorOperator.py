@@ -15,15 +15,31 @@ import numpy as np
 from imutils import face_utils
 from scipy import spatial
 
+import time
+import blf
+
 # settings
 DEBUG_MODE = False
 LANDMARK_PATH = "/Users/cansik/git/zhdk/auto-keypoint-retopology/shape_predictor_68_face_landmarks.dat"
 RENDER_DIR = "/Users/cansik/git/zhdk/auto-keypoint-retopology/render"
 
+
 # mapping
 # todo: add mapping of keypoints
 
-import blf
+class StopWatch:
+    def __init__(self):
+        self.start_time = 0
+        self.end_time = 0
+
+    def start(self):
+        self.start_time = time.time()
+
+    def stop(self):
+        self.end_time = time.time()
+
+    def elapsed(self):
+        return self.end_time - self.start_time
 
 
 class Annotator:
@@ -91,7 +107,10 @@ class AutoKeyPointExtractorOperator(bpy.types.Operator):
 
         bpy.context.scene.render.image_settings.file_format = 'PNG'
         bpy.context.scene.render.filepath = filename
+
         bpy.ops.render.render(use_viewport=True, write_still=True)
+        # todo: opengl renderer does not use camera
+        # bpy.ops.render.opengl(write_still=True, view_context=True)
 
     @staticmethod
     def get_screen_coordinates(scene, cam, obj):
@@ -209,6 +228,8 @@ class AutoKeyPointExtractorOperator(bpy.types.Operator):
         return vertex_indexes
 
     def execute(self, context):
+        stopwatch = StopWatch()
+
         self.annotator.remove_handler()
 
         # get object to be annotated
@@ -221,6 +242,8 @@ class AutoKeyPointExtractorOperator(bpy.types.Operator):
         obj = bpy.context.selected_objects[0]
         cam = bpy.data.objects['Camera']
 
+        stopwatch.start()
+
         # run detection
         vertex_indexes = self.detect_vertices(scene, obj, cam, 0.0)
         mean_accuracy = np.mean(vertex_indexes, axis=0)
@@ -228,6 +251,8 @@ class AutoKeyPointExtractorOperator(bpy.types.Operator):
         # extract real vertices
         vertices = [obj.data.vertices[vi[1]].co for vi in vertex_indexes]
         world_vertices = list(obj.matrix_world @ vert for vert in vertices)
+
+        stopwatch.stop()
 
         # add annotation for each vertex
         self.annotator.clear_annotations()
@@ -239,6 +264,7 @@ class AutoKeyPointExtractorOperator(bpy.types.Operator):
         print("-----")
         print("Points Extracted: %s pts" % len(vertex_indexes))
         print("Mean Accuracy: %s px" % round(mean_accuracy[0], 4))
+        print("It took about %s ms" % round(stopwatch.elapsed(), 2))
         print("-----")
 
         return {'FINISHED'}
