@@ -114,9 +114,36 @@ class AutoKeyPointExtractorOperator(bpy.types.Operator):
                 for v in screen_coordinates]
 
     @staticmethod
-    def retreive_cam_oriented_matching_vertex(cam, tree, kp):
-        # todo: filter points which are too fare away (otherwise backpoints match better)
-        return tree.query(kp)
+    def retrieve_cam_oriented_matching_vertex(obj, cam, tree, kp, nn_count):
+        if nn_count == 1:
+            return tree.query(kp)
+
+        # search in multiple candidates
+        query_result = tree.query(kp, k=nn_count)
+        candidates = [(distance, query_result[1][i]) for i, distance in enumerate(query_result[0])]
+
+        best_candidate = None
+        best_distance = 0
+
+        for candidate in candidates:
+            # extract world positions
+            local_vertex = obj.data.vertices[candidate[1]].co
+
+            world_vertex = obj.matrix_world @ local_vertex
+            world_cam = cam.location @ cam.matrix_world
+
+            # calculate distance
+            distance = (world_vertex - world_cam).length
+
+            # compare
+            # todo: check why wrong comparison (shouldn't it be smallest distance?!)
+            if best_candidate is None or distance > best_distance:
+                best_candidate = candidate
+                best_distance = distance
+
+        if DEBUG_MODE:
+            print("best distance: %s" % best_distance)
+        return best_candidate
 
     def extract_keypoints(self, filename):
         image = cv2.imread(filename, cv2.IMREAD_COLOR)
@@ -141,7 +168,7 @@ class AutoKeyPointExtractorOperator(bpy.types.Operator):
             cv2.waitKey(1)
         return shape.tolist()
 
-    def detect_vertices(self, scene, obj, cam, view_angle):
+    def detect_vertices(self, scene, obj, cam, view_angle, nn_count=8):
         # rotate object into detection-position
         rotation = obj.rotation_euler
         obj.rotation_euler = (rotation.x,
@@ -169,7 +196,7 @@ class AutoKeyPointExtractorOperator(bpy.types.Operator):
         tree = spatial.KDTree(scaled_screen_coordinates_list)
 
         # match screen coordinates to keypoint positions
-        vertex_indexes = [self.retreive_cam_oriented_matching_vertex(cam, tree, kp) for kp in keypoints]
+        vertex_indexes = [self.retrieve_cam_oriented_matching_vertex(obj, cam, tree, kp, nn_count) for kp in keypoints]
 
         # rotate object back into original position
         obj.rotation_euler = (rotation.x,
