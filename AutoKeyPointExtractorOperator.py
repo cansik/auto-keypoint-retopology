@@ -1,5 +1,6 @@
 # ugly fix if openvino is
 import os
+from math import radians
 
 from bpy_extras.view3d_utils import location_3d_to_region_2d
 
@@ -65,7 +66,9 @@ class Annotator:
         for position, text in self.annotations:
             pos_text = location_3d_to_region_2d(region, rv3d, position)
 
+            # todo: check if vertex is occluded
             blf.position(self.font_id, pos_text.x, pos_text.y, 0)
+            blf.color(self.font_id, 1.0, 0.0, 1.0, 1.0)
             blf.size(self.font_id, self.font_size, 72)
             blf.draw(self.font_id, text)
 
@@ -80,7 +83,8 @@ class AutoKeyPointExtractorOperator(bpy.types.Operator):
     predictor = dlib.shape_predictor(LANDMARK_PATH)
     annotator = Annotator()
 
-    def render_to_file(self, filename):
+    @staticmethod
+    def render_to_file(filename):
         for area in bpy.context.screen.areas:
             if area.type == 'VIEW_3D':
                 area.spaces[0].shading.type = 'RENDERED'
@@ -88,6 +92,31 @@ class AutoKeyPointExtractorOperator(bpy.types.Operator):
         bpy.context.scene.render.image_settings.file_format = 'PNG'
         bpy.context.scene.render.filepath = filename
         bpy.ops.render.render(use_viewport=True, write_still=True)
+
+    @staticmethod
+    def get_screen_coordinates(scene, cam, obj):
+        mat = obj.matrix_world
+
+        # Multiply matrix by vertex
+        vertices = (mat @ vert.co for vert in obj.data.vertices)
+        return [world_to_camera_view(scene, cam, coord) for coord in vertices]
+
+    @staticmethod
+    def scale_to_pixel(scene, screen_coordinates):
+        render_scale = scene.render.resolution_percentage / 100
+        render_size = (
+            int(scene.render.resolution_x * render_scale),
+            int(scene.render.resolution_y * render_scale),
+        )
+
+        # mapping coordinates
+        return [list((round(v[0] * render_size[0]), render_size[1] - round(v[1] * render_size[1])))
+                for v in screen_coordinates]
+
+    @staticmethod
+    def retreive_cam_oriented_matching_vertex(cam, tree, kp):
+        # todo: filter points which are too fare away (otherwise backpoints match better)
+        return tree.query(kp)
 
     def extract_keypoints(self, filename):
         image = cv2.imread(filename, cv2.IMREAD_COLOR)
@@ -112,36 +141,12 @@ class AutoKeyPointExtractorOperator(bpy.types.Operator):
             cv2.waitKey(1)
         return shape.tolist()
 
-    def get_screen_coordinates(self, scene, cam, obj):
-        mat = obj.matrix_world
-
-        # Multiply matrix by vertex
-        vertices = (mat @ vert.co for vert in obj.data.vertices)
-        return [world_to_camera_view(scene, cam, coord) for coord in vertices]
-
-    def scale_to_pixel(self, scene, screen_coordinates):
-        render_scale = scene.render.resolution_percentage / 100
-        render_size = (
-            int(scene.render.resolution_x * render_scale),
-            int(scene.render.resolution_y * render_scale),
-        )
-
-        # mapping coordinates
-        return [list((round(v[0] * render_size[0]), render_size[1] - round(v[1] * render_size[1])))
-                for v in screen_coordinates]
-
-    def execute(self, context):
-        self.annotator.remove_handler()
-
-        # get object to be annotated
-        if len(bpy.context.selected_objects) == 0:
-            print("no object selected!")
-            return {'FINISHED'}
-
-        # read objects
-        scene = bpy.context.scene
-        obj = bpy.context.selected_objects[0]
-        cam = bpy.data.objects['Camera']
+    def detect_vertices(self, scene, obj, cam, view_angle):
+        # rotate object into detection-position
+        rotation = obj.rotation_euler
+        obj.rotation_euler = (rotation.x,
+                              rotation.y,
+                              rotation.z + radians(view_angle))
 
         # create render
         image_path = RENDER_DIR + "/render.png"
@@ -164,8 +169,30 @@ class AutoKeyPointExtractorOperator(bpy.types.Operator):
         tree = spatial.KDTree(scaled_screen_coordinates_list)
 
         # match screen coordinates to keypoint positions
-        # todo: filter points which are too fare away (otherwise backpoints match better)
-        vertex_indexes = [tree.query(kp) for kp in keypoints]
+        vertex_indexes = [self.retreive_cam_oriented_matching_vertex(cam, tree, kp) for kp in keypoints]
+
+        # rotate object back into original position
+        obj.rotation_euler = (rotation.x,
+                              rotation.y,
+                              rotation.z - radians(view_angle))
+
+        return vertex_indexes
+
+    def execute(self, context):
+        self.annotator.remove_handler()
+
+        # get object to be annotated
+        if len(bpy.context.selected_objects) == 0:
+            print("no object selected!")
+            return {'FINISHED'}
+
+        # read objects
+        scene = bpy.context.scene
+        obj = bpy.context.selected_objects[0]
+        cam = bpy.data.objects['Camera']
+
+        # run detection
+        vertex_indexes = self.detect_vertices(scene, obj, cam, 0.0)
         mean_accuracy = np.mean(vertex_indexes, axis=0)
 
         # extract real vertices
@@ -176,7 +203,7 @@ class AutoKeyPointExtractorOperator(bpy.types.Operator):
         self.annotator.clear_annotations()
         for i, v in enumerate(world_vertices):
             bpy.context.scene.cursor.location = (v.x, v.y, v.z)
-            self.annotator.add_annotation(v, "o")
+            self.annotator.add_annotation(v, "x")
         self.annotator.add_handler()
 
         print("-----")
