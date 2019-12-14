@@ -1,9 +1,9 @@
-# ugly fix if openvino is
 import os
 from math import radians
 
 from bpy_extras.view3d_utils import location_3d_to_region_2d
 
+# ugly fix if openvino is available
 os.sys.path = list(filter(lambda x: "openvino" not in x, os.sys.path))
 
 import bpy
