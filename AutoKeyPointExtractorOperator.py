@@ -29,11 +29,12 @@ LANDMARK_POINTS = 68
 # todo: add mapping of keypoints
 
 # define which keypoints are selected from which extraction pass
-# name, view_angle, keypoints
+# name, pan_angle, tilt_angle, keypoints
 extraction_passes = [
-    ("left", 25.0, list(range(0, 7))),
-    ("center", 0.0, sum([[7, 8, 9], list(range(17, 68))], [])),
-    ("right", -25.0, list(range(10, 17)))
+    ("center", 0.0, 0.0, list(range(17, 68))),
+    ("left", 25.0, -15.0, list(range(0, 7))),
+    ("right", -25.0, -15.0, list(range(10, 17))),
+    ("bottom", 0.0, -25.0, [7, 8, 9])
 ]
 
 
@@ -198,12 +199,12 @@ class AutoKeyPointExtractorOperator(bpy.types.Operator):
             cv2.waitKey(1)
         return shape.tolist()
 
-    def detect_vertices_pass(self, name, scene, obj, cam, view_angle, nn_count=8):
+    def detect_vertices_pass(self, name, scene, obj, cam, pan_angle, tilt_angle, nn_count=8):
         # rotate object into detection-position
         rotation = obj.rotation_euler
-        obj.rotation_euler = (rotation.x,
+        obj.rotation_euler = (rotation.x + radians(tilt_angle),
                               rotation.y,
-                              rotation.z + radians(view_angle))
+                              rotation.z + radians(pan_angle))
         bpy.ops.object.transform_apply(rotation=True)
 
         # create render
@@ -230,9 +231,9 @@ class AutoKeyPointExtractorOperator(bpy.types.Operator):
         vertex_indexes = [self.retrieve_cam_oriented_matching_vertex(obj, cam, tree, kp, nn_count) for kp in keypoints]
 
         # rotate object back into original position
-        obj.rotation_euler = (rotation.x,
+        obj.rotation_euler = (rotation.x - radians(tilt_angle),
                               rotation.y,
-                              rotation.z - radians(view_angle))
+                              rotation.z - radians(pan_angle))
         bpy.ops.object.transform_apply(rotation=True)
 
         return vertex_indexes
@@ -256,16 +257,15 @@ class AutoKeyPointExtractorOperator(bpy.types.Operator):
 
         # run detection
         vertex_indexes = [None] * LANDMARK_POINTS
-        for name, angle, keypoint_indexes in extraction_passes:
+        for name, pan_angle, tilt_angle, keypoint_indexes in extraction_passes:
             # extract all points
-            ext_indexes = self.detect_vertices_pass(name, scene, obj, cam, angle)
-            print("Len: %s" % len(ext_indexes))
+            ext_indexes = self.detect_vertices_pass(name, scene, obj, cam, pan_angle, tilt_angle)
 
             # copy to vertex indexes
             for i in keypoint_indexes:
                 vertex_indexes[i] = ext_indexes[i]
 
-        # vertex_indexes = self.detect_vertices_pass("center", scene, obj, cam, 0.0)
+        # vertex_indexes = self.detect_vertices_pass("center", scene, obj, cam, 0.0, 0.0)
 
         mean_accuracy = np.mean(vertex_indexes, axis=0)
 
