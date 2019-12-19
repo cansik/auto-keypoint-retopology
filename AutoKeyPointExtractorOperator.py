@@ -23,6 +23,8 @@ DEBUG_MODE = False
 LANDMARK_PATH = "/Users/cansik/git/zhdk/auto-keypoint-retopology/shape_predictor_68_face_landmarks.dat"
 RENDER_DIR = "/Users/cansik/git/zhdk/auto-keypoint-retopology/render"
 
+LANDMARK_POINTS = 68
+
 # mapping
 # todo: add mapping of keypoints
 
@@ -30,7 +32,7 @@ RENDER_DIR = "/Users/cansik/git/zhdk/auto-keypoint-retopology/render"
 # name, view_angle, keypoints
 extraction_passes = [
     ("left", 25.0, list(range(0, 7))),
-    ("center", 0.0, sum([[7, 8, 9], list(range(17, 69))], [])),
+    ("center", 0.0, sum([[7, 8, 9], list(range(17, 68))], [])),
     ("right", -25.0, list(range(10, 17)))
 ]
 
@@ -253,8 +255,18 @@ class AutoKeyPointExtractorOperator(bpy.types.Operator):
         watch.start()
 
         # run detection
-        # todo: implement multi extraction
-        vertex_indexes = self.detect_vertices_pass("center", scene, obj, cam, 0.0)
+        vertex_indexes = [None] * LANDMARK_POINTS
+        for name, angle, keypoint_indexes in extraction_passes:
+            # extract all points
+            ext_indexes = self.detect_vertices_pass(name, scene, obj, cam, angle)
+            print("Len: %s" % len(ext_indexes))
+
+            # copy to vertex indexes
+            for i in keypoint_indexes:
+                vertex_indexes[i] = ext_indexes[i]
+
+        # vertex_indexes = self.detect_vertices_pass("center", scene, obj, cam, 0.0)
+
         mean_accuracy = np.mean(vertex_indexes, axis=0)
 
         # extract real vertices
